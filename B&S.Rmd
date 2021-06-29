@@ -1,0 +1,149 @@
+```{r}
+library(reticulate)
+#use_virtualenv('/path/to/myhybrid-project', required = TRUE)
+source_python('C:/Users/FATHALLAH/Desktop/B&S/monte.py')  
+  
+# Concepts about Reactive programming used by Shiny, 
+# https://shiny.rstudio.com/articles/reactivity-overview.html
+
+# Load R packages
+
+library(shiny)
+library(shinythemes)
+library(shinyWidgets)
+
+   BS <-function(S, K, T, r, volat, type="Call"){
+      d1 <- (log(S/K) + ((r) + 0.5*volat^2)*T) / (volat*sqrt(T))
+      d2 <- d1 - volat*sqrt(T)
+      if(type=="Call"){
+        value <- S*pnorm(d1) - K*exp(-r*T)*pnorm(d2)
+      }
+      if(type=="Put"){
+        value <- K*exp(-r*T)*pnorm(-d2) -S*pnorm(-d1)
+      }
+      cat( value, "\n")
+      
+      return(value)
+      
+    }
+ 
+
+  # Define UI
+  ui <- fluidPage(theme = shinytheme("superhero"),
+    navbarPage(
+      
+      theme = "cerulean",  # <--- To use a theme, uncomment this
+      "Blach and scholes predictions ",
+      tabPanel("Calcul",
+               sidebarPanel(
+                       tags$h3("Input"),
+                       prettyRadioButtons(
+                         inputId = "radio5",
+                         label = "Type d'option:",
+                         icon = icon("check"),
+                         choices = c("Put", "Call"),
+                         animation = "tada",
+                         status = "default"
+                       ),
+                       verbatimTextOutput(outputId = "res5"),
+                 
+                       dateInput("date_calcul", "Date de calcul", value = "2000-01-01", format = "dd/mm/yy"),
+                       dateInput("date_expiration", "Date d 'expiration", value = "2000-01-01", format = "dd/mm/yy"),
+                       
+                       numericInput("S0", label = "Prix du sous-jacent", value = 1),
+                       numericInput("K", label = "Prix d'exercice (strike)", value = 1),
+                       numericInput("taux", label = "Taux d'interet sans risque", value = 0.00),
+                       numericInput("Vol", label = "Volatilite du sous-jacent", value = 0.00),
+                       
+                       actionBttn("bs", "calculer",color = "royal",
+                                    style = "gradient",
+                                    icon = icon("search-dollar"),
+                                    block = TRUE), 
+                       helpText("When you click the button above, you should see",
+                             "the output below update to reflect the value you",
+                             "entered at the top"),
+               ),
+              # sidebarPanel
+              
+              mainPanel(
+                            h1("Resultat"),
+                            
+
+                            textOutput("mytext")
+                            
+                            
+                            
+               ),
+              ),
+      
+      tabPanel("Monte Carlo prediction ",
+               
+               sidebarPanel(  
+                               h1(" la valeur du call avec monte carlo "),
+             textOutput("valeur")
+                              ),
+             
+              mainPanel(
+               fluidRow(column(12,
+                     column(2, 
+                        plotOutput("plot1"),
+                    )
+                 )),
+               
+               fluidRow(column(12,
+                     column(2, 
+                        plotOutput("plot2"),
+                    )
+                 ),
+               
+              )
+))
+
+              
+    
+          
+ 
+      
+      
+    ) # navbarPage
+  ) # fluidPage
+
+  
+  # Define server function  
+  server <- function(input, output) {
+   
+    observeEvent(input$bs, {
+    
+      dt= difftime(input$date_expiration, input$date_calcul, units = "days")
+      tt= BS(input$S0, input$K,as.numeric(dt), input$taux, input$Vol, type=input$radio5)
+   
+    output$mytext <- renderText(tt)
+     
+      
+    })
+    
+    output$plot1 <- renderImage({
+      
+   monte_carlo()
+    
+    list(src = 'myplot.png')
+    }, deleteFile = TRUE)
+
+        
+    output$plot2 <- renderImage({
+      
+      py_run_file('C:/Users/FATHALLAH/Desktop/B&S/carlo.py')
+    
+    list(src = 'hist.png')
+    }, deleteFile = TRUE)
+   
+    
+      output$valeur <- renderText(23.4182039308992)
+      
+    ##output$bs <- renderPrint() 
+  } # server
+  
+
+  # Create Shiny object
+  shinyApp(ui = ui, server = server)
+```
